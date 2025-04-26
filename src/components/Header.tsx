@@ -1,12 +1,19 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { ChartNetwork, GitGraph, User } from 'lucide-react';
+import { ChartNetwork, GitGraph, User, TreePine } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthenticated, user, logout } = useAuth();
+  
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
   
   return (
     <header className="border-b border-border bg-white py-4 px-6 shadow-sm">
@@ -25,6 +32,16 @@ const Header = () => {
             <GitGraph className="mr-2 h-4 w-4" />
             Arbre Généalogique
           </Button>
+          
+          <Button 
+            variant={location.pathname === '/arbres' ? "default" : "ghost"}
+            onClick={() => navigate('/arbres')}
+            className="font-medium"
+          >
+            <TreePine className="mr-2 h-4 w-4" />
+            Mes Arbres
+          </Button>
+          
           <Button 
             variant={location.pathname === '/histoires' ? "default" : "ghost"}
             onClick={() => navigate('/histoires')}
@@ -36,8 +53,19 @@ const Header = () => {
         </nav>
         
         <div className="flex gap-2">
-          <Button variant="outline">Connexion</Button>
-          <Button>Ajouter une histoire</Button>
+          {isAuthenticated ? (
+            <>
+              <Button variant="outline" onClick={handleLogout}>Déconnexion</Button>
+              <Button onClick={() => navigate('/arbres')}>
+                Mes Arbres
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => navigate('/auth')}>Connexion</Button>
+              <Button onClick={() => navigate('/auth?tab=register')}>S'inscrire</Button>
+            </>
+          )}
         </div>
       </div>
     </header>
