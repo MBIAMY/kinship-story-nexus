@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { ChartNetwork, Graph, User } from 'lucide-react';
+import { ChartNetwork, GitGraph, User } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const Header = () => {
@@ -22,7 +22,7 @@ const Header = () => {
             onClick={() => navigate('/')}
             className="font-medium"
           >
-            <Graph className="mr-2 h-4 w-4" />
+            <GitGraph className="mr-2 h-4 w-4" />
             Arbre Généalogique
           </Button>
           <Button 
