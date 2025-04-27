@@ -1,14 +1,18 @@
 
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
-import { formatFamilyDataForGraph } from '@/data/sampleData';
+import { FamilyMemberData } from '@/models/types';
 
-const FamilyGraph = () => {
+interface FamilyGraphProps {
+  members: FamilyMemberData[];
+}
+
+const FamilyGraph: React.FC<FamilyGraphProps> = ({ members }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!svgRef.current || !containerRef.current) return;
+    if (!svgRef.current || !containerRef.current || members.length === 0) return;
 
     const width = containerRef.current.clientWidth;
     const height = 600;
@@ -35,8 +39,31 @@ const FamilyGraph = () => {
 
     svg.call(zoom as any);
 
-    // Get formatted data for D3
-    const graphData = formatFamilyDataForGraph();
+    // Prepare data for D3
+    const formatData = () => {
+      const nodes = members.map(member => ({
+        id: member.id,
+        name: `${member.firstName} ${member.lastName}`,
+        parentId1: member.parentId1 || '',
+        parentId2: member.parentId2 || '',
+      }));
+
+      const links: { source: string; target: string; }[] = [];
+      
+      // Create links between parents and children
+      nodes.forEach(node => {
+        if (node.parentId1) {
+          links.push({ source: node.parentId1, target: node.id });
+        }
+        if (node.parentId2) {
+          links.push({ source: node.parentId2, target: node.id });
+        }
+      });
+
+      return { nodes, links };
+    };
+
+    const graphData = formatData();
 
     // Create force simulation
     const simulation = d3.forceSimulation(graphData.nodes as any)
@@ -51,7 +78,9 @@ const FamilyGraph = () => {
       .data(graphData.links)
       .enter()
       .append("path")
-      .attr("class", "link");
+      .attr("class", "link")
+      .attr("stroke", "#8E9196")
+      .attr("stroke-width", 1.5);
 
     // Create node container groups
     const nodes = g.append("g")
@@ -67,41 +96,29 @@ const FamilyGraph = () => {
 
     // Add circles to nodes
     nodes.append("circle")
-      .attr("r", 10)
-      .attr("fill", (d: any) => d.img ? `url(#image-${d.id})` : "#1E5F8C");
+      .attr("r", 30)
+      .attr("fill", "#1A1F2C")
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 2);
 
     // Add names to nodes
     nodes.append("text")
-      .attr("dy", 25)
+      .attr("dy", 5)
       .attr("text-anchor", "middle")
+      .attr("fill", "#fff")
       .text((d: any) => d.name)
       .attr("class", "font-medium text-sm");
-
-    // Add defs for image patterns
-    const defs = svg.append("defs");
-
-    // Create patterns for each node with an image
-    graphData.nodes.forEach((node: any) => {
-      if (node.img) {
-        const pattern = defs.append("pattern")
-          .attr("id", `image-${node.id}`)
-          .attr("width", 1)
-          .attr("height", 1)
-          .attr("patternUnits", "objectBoundingBox");
-
-        pattern.append("image")
-          .attr("href", node.img)
-          .attr("width", 50)
-          .attr("height", 50)
-          .attr("preserveAspectRatio", "xMidYMid slice");
-      }
-    });
 
     // Update positions on each tick
     simulation.on("tick", () => {
       links
         .attr("d", (d: any) => {
-          return `M${d.source.x},${d.source.y}L${d.target.x},${d.target.y}`;
+          const sourceX = d.source.x;
+          const sourceY = d.source.y;
+          const targetX = d.target.x;
+          const targetY = d.target.y;
+          
+          return `M${sourceX},${sourceY}L${targetX},${targetY}`;
         });
 
       nodes
@@ -140,12 +157,12 @@ const FamilyGraph = () => {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [members]);
 
   return (
     <div 
       ref={containerRef} 
-      className="h-full w-full min-h-[600px] bg-family-cream rounded-lg shadow-sm border overflow-hidden"
+      className="h-full w-full min-h-[600px] bg-white rounded-lg shadow-sm border overflow-hidden"
     >
       <svg ref={svgRef}></svg>
     </div>
