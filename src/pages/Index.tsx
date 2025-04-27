@@ -4,9 +4,30 @@ import Header from '@/components/Header';
 import FamilyGraph from '@/components/FamilyGraph';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { familyMembers } from '@/data/sampleData';
+import { FamilyMemberData } from '@/models/types';
 
 const Index = () => {
   const [showIntro, setShowIntro] = useState(true);
+  
+  // Convert sample data to FamilyMemberData format
+  const sampleFamilyMembers: FamilyMemberData[] = familyMembers.map(member => ({
+    id: member.id,
+    treeId: '1',
+    firstName: member.name.split(' ')[0],
+    lastName: member.name.split(' ')[1] || '',
+    birthDate: member.dateOfBirth,
+    deathDate: member.dateOfDeath,
+    gender: 'O', // Default gender
+    birthPlace: '',
+    bio: member.bio,
+    avatar: member.imageUrl,
+    parentId1: member.parentIds[0],
+    parentId2: member.parentIds[1],
+    createdBy: '1',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }));
   
   return (
     <div className="min-h-screen flex flex-col bg-family-cream/30">
@@ -96,7 +117,7 @@ const Index = () => {
           </div>
           
           <div className="lg:col-span-3">
-            <FamilyGraph />
+            <FamilyGraph members={sampleFamilyMembers} />
           </div>
         </div>
       </main>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -11,6 +10,7 @@ import { toast } from 'sonner';
 import { GitGraph, User, UserPlus } from 'lucide-react';
 import TreePermissions from '@/components/permissions/TreePermissions';
 import AddMemberForm from '@/components/tree/AddMemberForm';
+import FamilyGraph from '@/components/FamilyGraph';
 
 const TreeViewPage = () => {
   const { treeId } = useParams<{ treeId: string }>();
@@ -24,7 +24,6 @@ const TreeViewPage = () => {
   const [showPermissions, setShowPermissions] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
   
-  // Vérification de l'authentification
   useEffect(() => {
     if (!isAuthenticated) {
       toast.error('Vous devez être connecté pour accéder à cette page');
@@ -32,7 +31,6 @@ const TreeViewPage = () => {
     }
   }, [isAuthenticated, navigate]);
   
-  // Charger les données de l'arbre et des membres
   useEffect(() => {
     const fetchTreeData = async () => {
       if (!treeId) return;
@@ -40,21 +38,17 @@ const TreeViewPage = () => {
       setIsLoading(true);
       
       try {
-        // Dans une application réelle, ces données proviendraient d'un appel API
-        // Simulons un délai de chargement
         await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Données simulées pour l'arbre
         const treeData: FamilyTreeData = {
           id: treeId,
           name: "Famille Dupont",
           description: "L'arbre généalogique de la famille Dupont depuis 1920",
-          ownerId: "123", // Supposons que c'est l'ID de l'utilisateur connecté
+          ownerId: "123",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
         
-        // Données simulées pour les membres
         const membersData: FamilyMemberData[] = [
           {
             id: "member-1",
@@ -85,8 +79,6 @@ const TreeViewPage = () => {
         setTree(treeData);
         setMembers(membersData);
         
-        // Vérifier les permissions (simulé)
-        // Dans une application réelle, ces permissions proviendraient du backend
         setCanEdit(treeData.ownerId === user?.id);
         
       } catch (error) {
@@ -100,7 +92,6 @@ const TreeViewPage = () => {
     fetchTreeData();
   }, [treeId, user?.id]);
   
-  // Gérer l'ajout d'un membre
   const handleAddMember = (newMember: FamilyMemberData) => {
     setMembers([...members, newMember]);
   };
@@ -180,14 +171,8 @@ const TreeViewPage = () => {
             </TabsList>
             
             <TabsContent value="tree">
-              <Card className="p-6 flex items-center justify-center min-h-[500px]">
-                <div className="text-center">
-                  <GitGraph className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">Visualisation de l'arbre</h3>
-                  <p className="text-muted-foreground mb-6">
-                    La visualisation graphique de l'arbre sera implémentée avec D3.js.
-                  </p>
-                </div>
+              <Card className="p-6">
+                <FamilyGraph members={members} />
               </Card>
             </TabsContent>
             

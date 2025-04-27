@@ -4,15 +4,15 @@ import * as d3 from 'd3';
 import { FamilyMemberData } from '@/models/types';
 
 interface FamilyGraphProps {
-  members: FamilyMemberData[];
+  members?: FamilyMemberData[];
 }
 
-const FamilyGraph: React.FC<FamilyGraphProps> = ({ members }) => {
+const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [] }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!svgRef.current || !containerRef.current || members.length === 0) return;
+    if (!svgRef.current || !containerRef.current) return;
 
     const width = containerRef.current.clientWidth;
     const height = 600;
@@ -38,6 +38,18 @@ const FamilyGraph: React.FC<FamilyGraphProps> = ({ members }) => {
       });
 
     svg.call(zoom as any);
+
+    // If there are no members, display a placeholder
+    if (members.length === 0) {
+      g.append("text")
+        .attr("x", width / 2)
+        .attr("y", height / 2)
+        .attr("text-anchor", "middle")
+        .attr("class", "text-lg font-medium text-muted-foreground")
+        .text("Aucun membre à afficher dans l'arbre");
+
+      return;
+    }
 
     // Prepare data for D3
     const formatData = () => {
