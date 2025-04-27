@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import MembersPage from "./pages/MembersPage";
 import AuthPage from "./pages/AuthPage";
 import TreeManagementPage from "./pages/TreeManagementPage";
+import TreeViewPage from "./pages/TreeViewPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/histoires" element={<MembersPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/arbres" element={<TreeManagementPage />} />
+            <Route path="/arbre/:treeId" element={<TreeViewPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

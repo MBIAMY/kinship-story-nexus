@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,16 +15,7 @@ import { GitGraph, Settings, TreePine, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import TreePermissions from '@/components/permissions/TreePermissions';
 import { useAuth } from '@/contexts/AuthContext';
-
-// Type pour un arbre généalogique
-type FamilyTree = {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: Date;
-  ownerId: string;
-  memberCount: number;
-};
+import { FamilyTreeData } from '@/models/types';
 
 // Schéma de validation pour la création d'un arbre
 const createTreeSchema = z.object({
@@ -37,22 +28,22 @@ type CreateTreeFormValues = z.infer<typeof createTreeSchema>;
 const TreeManagementPage = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
-  const [trees, setTrees] = useState<FamilyTree[]>([
+  const [trees, setTrees] = useState<FamilyTreeData[]>([
     {
       id: 'tree-1',
       name: 'Famille Dupont',
       description: 'L\'arbre généalogique principal de la famille Dupont',
-      createdAt: new Date(2023, 5, 15),
-      ownerId: '123',
-      memberCount: 12
+      createdAt: new Date(2023, 5, 15).toISOString(),
+      updatedAt: new Date(2023, 5, 15).toISOString(),
+      ownerId: '123'
     },
     {
       id: 'tree-2',
       name: 'Branche Martin',
       description: 'La branche maternelle des Martin',
-      createdAt: new Date(2024, 2, 8),
-      ownerId: '123',
-      memberCount: 8
+      createdAt: new Date(2024, 2, 8).toISOString(),
+      updatedAt: new Date(2024, 2, 8).toISOString(),
+      ownerId: '123'
     }
   ]);
   
@@ -69,8 +60,9 @@ const TreeManagementPage = () => {
   });
 
   // Redirection vers la page de connexion si non authentifié
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isAuthenticated) {
+      toast.error('Vous devez être connecté pour accéder à cette page');
       navigate('/auth');
     }
   }, [isAuthenticated, navigate]);
@@ -79,13 +71,13 @@ const TreeManagementPage = () => {
   const handleCreateTree = (data: CreateTreeFormValues) => {
     // Dans une application réelle, ici vous feriez un appel à votre API Java Spring Boot
     
-    const newTree: FamilyTree = {
+    const newTree: FamilyTreeData = {
       id: `tree-${Date.now()}`,
       name: data.name,
       description: data.description || '',
-      createdAt: new Date(),
-      ownerId: user?.id || '',
-      memberCount: 1
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ownerId: user?.id || ''
     };
     
     setTrees([...trees, newTree]);
@@ -208,10 +200,10 @@ const TreeManagementPage = () => {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center">
                         <Users className="h-4 w-4 mr-2" />
-                        <span className="text-sm">{tree.memberCount} membres</span>
+                        <span className="text-sm">0 membres</span>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Créé le {tree.createdAt.toLocaleDateString()}
+                        Créé le {new Date(tree.createdAt).toLocaleDateString()}
                       </div>
                     </div>
                     

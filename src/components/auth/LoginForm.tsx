@@ -7,8 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { toast } from 'sonner';
 import { Lock, User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Schéma de validation
 const loginSchema = z.object({
@@ -21,6 +21,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 const LoginForm = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
   
   // Configuration du formulaire
   const form = useForm<LoginFormValues>({
@@ -36,22 +37,12 @@ const LoginForm = () => {
     setIsLoading(true);
     
     try {
-      // Simule une connexion réussie (à remplacer par un appel à votre API Java Spring Boot)
       console.log('Tentative de connexion avec:', data);
-      
-      // Simulation d'une attente de réponse du serveur
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Stocke les informations utilisateur dans le localStorage (à remplacer par une solution plus sécurisée)
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userEmail', data.email);
-      localStorage.setItem('userId', '123'); // À remplacer par l'ID réel retourné par le backend
-      
-      toast.success('Connexion réussie!');
-      navigate('/');
+      await login(data.email, data.password);
+      navigate('/arbres');
     } catch (error) {
       console.error('Erreur de connexion:', error);
-      toast.error('Échec de la connexion. Veuillez vérifier vos identifiants.');
+      // Toast déjà géré par le AuthContext
     } finally {
       setIsLoading(false);
     }
