@@ -7,10 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FamilyMemberData, FamilyTreeData } from '@/models/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { GitGraph, User, UserPlus } from 'lucide-react';
+import { GitGraph, User, UserPlus, Edit, Trash2 } from 'lucide-react';
 import TreePermissions from '@/components/permissions/TreePermissions';
 import AddMemberForm from '@/components/tree/AddMemberForm';
 import FamilyGraph from '@/components/FamilyGraph';
+import EditMemberForm from '@/components/tree/EditMemberForm';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const TreeViewPage = () => {
   const { treeId } = useParams<{ treeId: string }>();
@@ -23,6 +25,9 @@ const TreeViewPage = () => {
   const [canEdit, setCanEdit] = useState(false);
   const [showPermissions, setShowPermissions] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<FamilyMemberData | null>(null);
+  const [showEditMember, setShowEditMember] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
   useEffect(() => {
     if (!isAuthenticated) {
@@ -92,6 +97,23 @@ const TreeViewPage = () => {
   
   const handleAddMember = (newMember: FamilyMemberData) => {
     setMembers([...members, newMember]);
+  };
+  
+  const handleEditMember = (updatedMember: FamilyMemberData) => {
+    const updatedMembers = members.map(member => 
+      member.id === updatedMember.id ? updatedMember : member
+    );
+    setMembers(updatedMembers);
+  };
+  
+  const handleDeleteMember = () => {
+    if (!selectedMember) return;
+    
+    const updatedMembers = members.filter(member => member.id !== selectedMember.id);
+    setMembers(updatedMembers);
+    toast.success(`${selectedMember.firstName} ${selectedMember.lastName} a été supprimé`);
+    setShowDeleteDialog(false);
+    setSelectedMember(null);
   };
   
   if (isLoading) {
@@ -229,9 +251,28 @@ const TreeViewPage = () => {
                               </td>
                               {canEdit && (
                                 <td className="py-3 px-4 text-right">
-                                  <Button variant="ghost" size="sm">
-                                    Détails
-                                  </Button>
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedMember(member);
+                                        setShowEditMember(true);
+                                      }}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedMember(member);
+                                        setShowDeleteDialog(true);
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </td>
                               )}
                             </tr>
@@ -268,6 +309,35 @@ const TreeViewPage = () => {
         onAddMember={handleAddMember}
         existingMembers={members}
       />
+      
+      {selectedMember && (
+        <EditMemberForm
+          member={selectedMember}
+          isOpen={showEditMember}
+          onClose={() => {
+            setShowEditMember(false);
+            setSelectedMember(null);
+          }}
+          onEdit={handleEditMember}
+        />
+      )}
+      
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Le membre sera définitivement supprimé de l'arbre généalogique.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteMember}>
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
