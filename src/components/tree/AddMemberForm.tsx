@@ -221,7 +221,7 @@ const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Aucun</SelectItem>
+                        <SelectItem value="none">Aucun</SelectItem>
                         {existingMembers.map((member) => (
                           <SelectItem key={member.id} value={member.id}>
                             {member.firstName} {member.lastName}
@@ -250,7 +250,7 @@ const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Aucun</SelectItem>
+                        <SelectItem value="none">Aucun</SelectItem>
                         {existingMembers.map((member) => (
                           <SelectItem key={member.id} value={member.id}>
                             {member.firstName} {member.lastName}
