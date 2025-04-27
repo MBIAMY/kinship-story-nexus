@@ -68,21 +68,6 @@ const TreeViewPage = () => {
             birthDate: "1925-11-22",
             gender: "F",
             birthPlace: "Lyon",
-            parentId1: "member-1",
-            createdBy: "123",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: "member-3",
-            treeId: treeId,
-            firstName: "Pierre",
-            lastName: "Dupont",
-            birthDate: "1950-03-10",
-            gender: "M",
-            birthPlace: "Paris",
-            parentId1: "member-1",
-            parentId2: "member-2",
             createdBy: "123",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
