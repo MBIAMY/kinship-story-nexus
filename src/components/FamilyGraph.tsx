@@ -58,16 +58,17 @@ const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [] }) => {
         name: `${member.firstName} ${member.lastName}`,
         parentId1: member.parentId1 || '',
         parentId2: member.parentId2 || '',
+        gender: member.gender || ''
       }));
 
       const links: { source: string; target: string; }[] = [];
       
       // Create links between parents and children
       nodes.forEach(node => {
-        if (node.parentId1) {
+        if (node.parentId1 && node.parentId1 !== 'none') {
           links.push({ source: node.parentId1, target: node.id });
         }
-        if (node.parentId2) {
+        if (node.parentId2 && node.parentId2 !== 'none') {
           links.push({ source: node.parentId2, target: node.id });
         }
       });
@@ -77,82 +78,100 @@ const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [] }) => {
 
     const graphData = formatData();
 
-    // Create force simulation
-    const simulation = d3.forceSimulation(graphData.nodes as any)
-      .force("link", d3.forceLink(graphData.links).id((d: any) => d.id).distance(100))
-      .force("charge", d3.forceManyBody().strength(-500))
-      .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collide", d3.forceCollide().radius(60));
+    try {
+      // Create force simulation
+      const simulation = d3.forceSimulation(graphData.nodes as any)
+        .force("link", d3.forceLink(graphData.links).id((d: any) => d.id).distance(100))
+        .force("charge", d3.forceManyBody().strength(-500))
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("collide", d3.forceCollide().radius(60));
 
-    // Create links
-    const links = g.append("g")
-      .selectAll("line")
-      .data(graphData.links)
-      .enter()
-      .append("path")
-      .attr("class", "link")
-      .attr("stroke", "#8E9196")
-      .attr("stroke-width", 1.5);
+      // Create links
+      const links = g.append("g")
+        .selectAll("line")
+        .data(graphData.links)
+        .enter()
+        .append("path")
+        .attr("class", "link")
+        .attr("stroke", "#8E9196")
+        .attr("stroke-width", 1.5);
 
-    // Create node container groups
-    const nodes = g.append("g")
-      .selectAll(".node")
-      .data(graphData.nodes)
-      .enter()
-      .append("g")
-      .attr("class", "node")
-      .call(d3.drag()
-        .on("start", dragstarted)
-        .on("drag", dragged)
-        .on("end", dragended) as any);
+      // Create node container groups
+      const nodes = g.append("g")
+        .selectAll(".node")
+        .data(graphData.nodes)
+        .enter()
+        .append("g")
+        .attr("class", "node")
+        .call(d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended) as any);
 
-    // Add circles to nodes
-    nodes.append("circle")
-      .attr("r", 30)
-      .attr("fill", "#1A1F2C")
-      .attr("stroke", "#fff")
-      .attr("stroke-width", 2);
+      // Add circles to nodes with gender-based colors
+      nodes.append("circle")
+        .attr("r", 30)
+        .attr("fill", (d: any) => {
+          switch(d.gender) {
+            case 'M': return "#3b82f6"; // Bleu pour les hommes
+            case 'F': return "#ec4899"; // Rose pour les femmes
+            default: return "#1A1F2C";  // Couleur par défaut
+          }
+        })
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 2);
 
-    // Add names to nodes
-    nodes.append("text")
-      .attr("dy", 5)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#fff")
-      .text((d: any) => d.name)
-      .attr("class", "font-medium text-sm");
+      // Add names to nodes
+      nodes.append("text")
+        .attr("dy", 5)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#fff")
+        .text((d: any) => d.name)
+        .attr("class", "font-medium text-sm");
 
-    // Update positions on each tick
-    simulation.on("tick", () => {
-      links
-        .attr("d", (d: any) => {
-          const sourceX = d.source.x;
-          const sourceY = d.source.y;
-          const targetX = d.target.x;
-          const targetY = d.target.y;
-          
-          return `M${sourceX},${sourceY}L${targetX},${targetY}`;
-        });
+      // Update positions on each tick
+      simulation.on("tick", () => {
+        links
+          .attr("d", (d: any) => {
+            const sourceX = d.source.x;
+            const sourceY = d.source.y;
+            const targetX = d.target.x;
+            const targetY = d.target.y;
+            
+            return `M${sourceX},${sourceY}L${targetX},${targetY}`;
+          });
 
-      nodes
-        .attr("transform", (d: any) => `translate(${d.x},${d.y})`);
-    });
+        nodes
+          .attr("transform", (d: any) => `translate(${d.x},${d.y})`);
+      });
 
-    // Drag functions
-    function dragstarted(event: any, d: any) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
-      d.fx = d.x;
-      d.fy = d.y;
-    }
+      // Drag functions
+      function dragstarted(event: any, d: any) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      }
 
-    function dragged(event: any, d: any) {
-      d.fx = event.x;
-      d.fy = event.y;
-    }
+      function dragged(event: any, d: any) {
+        d.fx = event.x;
+        d.fy = event.y;
+      }
 
-    function dragended(event: any, d: any) {
-      if (!event.active) simulation.alphaTarget(0);
-      d.fx = null;
-      d.fy = null;
+      function dragended(event: any, d: any) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+      }
+    } catch (error) {
+      console.error("Erreur lors du rendu du graphique:", error);
+      
+      // Afficher un message d'erreur au lieu d'une page blanche
+      g.append("text")
+        .attr("x", width / 2)
+        .attr("y", height / 2)
+        .attr("text-anchor", "middle")
+        .attr("class", "text-lg font-medium text-destructive")
+        .text("Erreur lors de l'affichage de l'arbre généalogique");
     }
 
     // Handle window resize
@@ -160,8 +179,17 @@ const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [] }) => {
       if (!containerRef.current) return;
       const newWidth = containerRef.current.clientWidth;
       svg.attr("width", newWidth);
-      simulation.force("center", d3.forceCenter(newWidth / 2, height / 2));
-      simulation.alpha(0.3).restart();
+      d3.select(svgRef.current).selectAll("*").remove();
+      // Re-render the graph on resize
+      renderGraph();
+    };
+
+    // Fonction pour rendre le graphique
+    const renderGraph = () => {
+      // Cette fonction est appelée pour réinitialiser le graphique
+      // après un redimensionnement. Pour l'instant, nous déclenchons juste
+      // un nouveau rendu complet en rechargeant la page.
+      window.location.reload();
     };
 
     window.addEventListener('resize', handleResize);
