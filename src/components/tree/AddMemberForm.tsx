@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,6 +35,12 @@ type AddMemberFormProps = {
 
 const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }: AddMemberFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  
+  // Synchroniser l'état du dialogue avec la prop isOpen
+  useEffect(() => {
+    setDialogOpen(isOpen);
+  }, [isOpen]);
   
   // Configuration du formulaire
   const form = useForm<z.infer<typeof memberSchema>>({
@@ -51,6 +57,24 @@ const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }
       parentId2: '',
     },
   });
+
+  // Réinitialiser le formulaire quand le dialogue s'ouvre
+  useEffect(() => {
+    if (isOpen) {
+      form.reset();
+    }
+  }, [isOpen, form]);
+
+  // Gérer la fermeture du dialogue
+  const handleOpenChange = (open: boolean) => {
+    if (!open && !isLoading) {
+      // Attendre que l'animation de fermeture se termine
+      setTimeout(() => {
+        onClose();
+      }, 300);
+      setDialogOpen(false);
+    }
+  };
 
   // Gestion de la soumission
   const onSubmit = async (data: z.infer<typeof memberSchema>) => {
@@ -81,7 +105,7 @@ const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }
       onAddMember(newMember);
       toast.success(`${data.firstName} ${data.lastName} a été ajouté à l'arbre`);
       form.reset();
-      onClose();
+      handleOpenChange(false);
     } catch (error) {
       console.error('Erreur lors de l\'ajout du membre', error);
       toast.error('Échec de l\'ajout du membre');
@@ -91,9 +115,7 @@ const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {
-      if (!isLoading) onClose();
-    }}>
+    <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Ajouter un membre à l'arbre</DialogTitle>
@@ -283,7 +305,7 @@ const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }
             />
             
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isLoading}>
                 Annuler
               </Button>
               <Button type="submit" disabled={isLoading}>

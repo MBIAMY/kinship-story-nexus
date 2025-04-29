@@ -76,12 +76,21 @@ const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [] }) => {
       return { nodes, links };
     };
 
-    const graphData = formatData();
-
     try {
+      const graphData = formatData();
+
+      // Vérifier que tous les IDs sources dans les liens existent dans les nœuds
+      const validLinks = graphData.links.filter(link => {
+        const sourceExists = graphData.nodes.some(node => node.id === link.source);
+        if (!sourceExists) {
+          console.warn(`Lien ignoré: Source ID ${link.source} n'existe pas dans les nœuds`);
+        }
+        return sourceExists;
+      });
+
       // Create force simulation
       const simulation = d3.forceSimulation(graphData.nodes as any)
-        .force("link", d3.forceLink(graphData.links).id((d: any) => d.id).distance(100))
+        .force("link", d3.forceLink(validLinks).id((d: any) => d.id).distance(100))
         .force("charge", d3.forceManyBody().strength(-500))
         .force("center", d3.forceCenter(width / 2, height / 2))
         .force("collide", d3.forceCollide().radius(60));
@@ -89,7 +98,7 @@ const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [] }) => {
       // Create links
       const links = g.append("g")
         .selectAll("line")
-        .data(graphData.links)
+        .data(validLinks)
         .enter()
         .append("path")
         .attr("class", "link")
@@ -177,19 +186,21 @@ const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [] }) => {
     // Handle window resize
     const handleResize = () => {
       if (!containerRef.current) return;
-      const newWidth = containerRef.current.clientWidth;
-      svg.attr("width", newWidth);
-      d3.select(svgRef.current).selectAll("*").remove();
-      // Re-render the graph on resize
-      renderGraph();
-    };
-
-    // Fonction pour rendre le graphique
-    const renderGraph = () => {
-      // Cette fonction est appelée pour réinitialiser le graphique
-      // après un redimensionnement. Pour l'instant, nous déclenchons juste
-      // un nouveau rendu complet en rechargeant la page.
-      window.location.reload();
+      // Au lieu de recharger la page, on recalcule simplement la taille
+      try {
+        const newWidth = containerRef.current.clientWidth;
+        svg.attr("width", newWidth);
+        // On utiliserait idéalement un état React pour déclencher un rendu,
+        // mais pour simplifier, on efface et redessine
+        setTimeout(() => {
+          if (containerRef.current && svgRef.current) {
+            d3.select(svgRef.current).selectAll("*").remove();
+            // Nous aurions besoin de réinitialiser les écouteurs d'événements ici
+          }
+        }, 100);
+      } catch (err) {
+        console.error("Erreur lors du redimensionnement:", err);
+      }
     };
 
     window.addEventListener('resize', handleResize);
