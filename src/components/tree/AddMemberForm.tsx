@@ -37,11 +37,6 @@ const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }
   const [isLoading, setIsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   
-  // Synchroniser l'état du dialogue avec la prop isOpen
-  useEffect(() => {
-    setDialogOpen(isOpen);
-  }, [isOpen]);
-  
   // Configuration du formulaire
   const form = useForm<z.infer<typeof memberSchema>>({
     resolver: zodResolver(memberSchema),
@@ -57,22 +52,28 @@ const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }
       parentId2: '',
     },
   });
-
-  // Réinitialiser le formulaire quand le dialogue s'ouvre
+  
+  // Synchroniser l'état local du dialogue avec la prop isOpen
   useEffect(() => {
     if (isOpen) {
+      setDialogOpen(true);
+      // Réinitialiser le formulaire à l'ouverture
       form.reset();
     }
   }, [isOpen, form]);
 
-  // Gérer la fermeture du dialogue
+  // Gérer la fermeture du dialogue de manière sécurisée
   const handleOpenChange = (open: boolean) => {
-    if (!open && !isLoading) {
-      // Attendre que l'animation de fermeture se termine
+    if (!open) {
+      if (isLoading) return; // Ne pas fermer pendant le chargement
+      
+      // Mettre à jour l'état local immédiatement
+      setDialogOpen(false);
+      
+      // Différer l'appel à onClose pour éviter les problèmes de suppression de nœuds
       setTimeout(() => {
         onClose();
-      }, 300);
-      setDialogOpen(false);
+      }, 100);
     }
   };
 
@@ -102,10 +103,17 @@ const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }
       // Simulation d'un délai d'appel API
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      onAddMember(newMember);
-      toast.success(`${data.firstName} ${data.lastName} a été ajouté à l'arbre`);
-      form.reset();
-      handleOpenChange(false);
+      // Mettre à jour l'état local avant de fermer le dialogue
+      setDialogOpen(false);
+      
+      // Différer les actions suivantes pour éviter les problèmes de cycle de vie
+      setTimeout(() => {
+        onAddMember(newMember);
+        toast.success(`${data.firstName} ${data.lastName} a été ajouté à l'arbre`);
+        form.reset();
+        onClose();
+      }, 100);
+      
     } catch (error) {
       console.error('Erreur lors de l\'ajout du membre', error);
       toast.error('Échec de l\'ajout du membre');
