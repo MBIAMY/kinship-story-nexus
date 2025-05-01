@@ -56,76 +56,168 @@ const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [] }) => {
         return;
       }
 
-      // Prepare data for D3
-      const formatData = () => {
-        const nodes = members.map(member => ({
-          id: member.id,
-          name: `${member.firstName} ${member.lastName}`,
-          parentId1: member.parentId1 || '',
-          parentId2: member.parentId2 || '',
-          gender: member.gender || ''
-        }));
+      // Prepare data for hierarchical layout
+      const formatHierarchicalData = () => {
+        // Créer un dictionnaire pour accéder rapidement aux membres par ID
+        const membersById: { [key: string]: any } = {};
+        members.forEach(member => {
+          membersById[member.id] = {
+            id: member.id,
+            name: `${member.firstName} ${member.lastName}`,
+            gender: member.gender || '',
+            children: []
+          };
+        });
 
-        const links: { source: string; target: string; }[] = [];
-        
-        // Create links between parents and children
-        nodes.forEach(node => {
-          if (node.parentId1 && node.parentId1 !== 'none') {
-            links.push({ source: node.parentId1, target: node.id });
+        // Identifier les membres sans parents (racines de l'arbre)
+        const roots: string[] = [];
+        members.forEach(member => {
+          const hasValidParent1 = member.parentId1 && member.parentId1 !== 'none' && membersById[member.parentId1];
+          const hasValidParent2 = member.parentId2 && member.parentId2 !== 'none' && membersById[member.parentId2];
+
+          // Si le membre a au moins un parent valide, l'ajouter comme enfant à ce(s) parent(s)
+          if (hasValidParent1) {
+            membersById[member.parentId1].children.push(member.id);
           }
-          if (node.parentId2 && node.parentId2 !== 'none') {
-            links.push({ source: node.parentId2, target: node.id });
+          if (hasValidParent2) {
+            membersById[member.parentId2].children.push(member.id);
+          }
+
+          // Si le membre n'a pas de parents valides, c'est une racine
+          if (!hasValidParent1 && !hasValidParent2) {
+            roots.push(member.id);
           }
         });
 
-        return { nodes, links };
+        return { membersById, roots };
       };
 
-      const graphData = formatData();
+      const { membersById, roots } = formatHierarchicalData();
 
-      // Vérifier que tous les IDs sources dans les liens existent dans les nœuds
-      const validLinks = graphData.links.filter(link => {
-        const sourceExists = graphData.nodes.some(node => node.id === link.source);
-        if (!sourceExists) {
-          console.warn(`Lien ignoré: Source ID ${link.source} n'existe pas dans les nœuds`);
-        }
-        return sourceExists;
-      });
+      // Positionner les membres en fonction de leur niveau dans la hiérarchie
+      // On utilise un algorithme simple basé sur la profondeur
+      const positionMembers = () => {
+        const levels: { [key: string]: number } = {}; // Niveau de chaque membre
+        const positions: { [key: string]: { x: number, y: number } } = {}; // Position finale
+        
+        // Déterminer le niveau de chaque membre (profondeur dans l'arbre)
+        const assignLevels = (id: string, level: number) => {
+          if (!membersById[id]) return;
+          
+          // Si le membre a déjà un niveau assigné, prendre le plus proche de la racine
+          if (levels[id] !== undefined) {
+            levels[id] = Math.min(levels[id], level);
+          } else {
+            levels[id] = level;
+          }
+          
+          // Assigner des niveaux aux enfants
+          membersById[id].children.forEach((childId: string) => {
+            assignLevels(childId, level + 1);
+          });
+        };
 
-      // Create force simulation
-      const simulation = d3.forceSimulation(graphData.nodes as any)
-        .force("link", d3.forceLink(validLinks).id((d: any) => d.id).distance(100))
-        .force("charge", d3.forceManyBody().strength(-500))
-        .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("collide", d3.forceCollide().radius(60));
+        // Commencer à assigner les niveaux depuis les racines
+        roots.forEach(rootId => {
+          assignLevels(rootId, 0);
+        });
 
-      // Create links
+        // Déterminer le nombre maximum de membres par niveau
+        const membersPerLevel: { [level: number]: number } = {};
+        Object.entries(levels).forEach(([id, level]) => {
+          membersPerLevel[level] = (membersPerLevel[level] || 0) + 1;
+        });
+
+        // Assigner les positions X en fonction du niveau et Y en fonction de la distribution
+        Object.entries(levels).forEach(([id, level]) => {
+          const levelY = level * 120 + 80;  // Espacement vertical entre les niveaux
+          
+          // Pour positionner horizontalement, on répartit équitablement les membres d'un niveau
+          const memberCount = membersPerLevel[level];
+          const memberIndex = membersById[id].xIndex || 0;
+          
+          // Si xIndex n'est pas défini, on le calcule
+          if (membersById[id].xIndex === undefined) {
+            // On compte combien de membres de ce niveau ont déjà été positionnés
+            let currentIndex = 0;
+            for (const mId in levels) {
+              if (levels[mId] === level && mId < id) {
+                currentIndex++;
+              }
+            }
+            membersById[id].xIndex = currentIndex;
+          }
+          
+          const spacing = width / (memberCount + 1);
+          const posX = spacing * (membersById[id].xIndex + 1);
+          
+          positions[id] = { x: posX, y: levelY };
+        });
+
+        return positions;
+      };
+
+      const positions = positionMembers();
+
+      // Créer les nœuds et les liens graphiques
+      // Créer les liens
       const links = g.append("g")
-        .selectAll("line")
-        .data(validLinks)
+        .selectAll("path")
+        .data(generateLinks())
         .enter()
         .append("path")
         .attr("class", "link")
         .attr("stroke", "#8E9196")
-        .attr("stroke-width", 1.5);
+        .attr("stroke-width", 1.5)
+        .attr("d", (d: any) => {
+          const sourceX = positions[d.source].x;
+          const sourceY = positions[d.source].y;
+          const targetX = positions[d.target].x;
+          const targetY = positions[d.target].y;
+          
+          // Utiliser une courbe pour les liens parent-enfant
+          return `M${sourceX},${sourceY} C${sourceX},${(sourceY + targetY) / 2} ${targetX},${(sourceY + targetY) / 2} ${targetX},${targetY}`;
+        });
 
-      // Create node container groups
+      // Créer les nœuds
       const nodes = g.append("g")
         .selectAll(".node")
-        .data(graphData.nodes)
+        .data(Object.keys(positions))
         .enter()
         .append("g")
         .attr("class", "node")
+        .attr("transform", (id) => `translate(${positions[id].x},${positions[id].y})`)
         .call(d3.drag()
           .on("start", dragstarted)
-          .on("drag", dragged)
+          .on("drag", (event, id) => {
+            const dx = event.x - positions[id].x;
+            const dy = event.y - positions[id].y;
+            
+            // Limiter le déplacement vertical pour maintenir la hiérarchie
+            positions[id].x = event.x;
+            
+            // Mise à jour de la position du nœud
+            d3.select(event.sourceEvent.target.closest('.node'))
+              .attr("transform", `translate(${positions[id].x},${positions[id].y})`);
+            
+            // Mise à jour des liens
+            links.attr("d", (d: any) => {
+              const sourceX = positions[d.source].x;
+              const sourceY = positions[d.source].y;
+              const targetX = positions[d.target].x;
+              const targetY = positions[d.target].y;
+              
+              return `M${sourceX},${sourceY} C${sourceX},${(sourceY + targetY) / 2} ${targetX},${(sourceY + targetY) / 2} ${targetX},${targetY}`;
+            });
+          })
           .on("end", dragended) as any);
 
-      // Add circles to nodes with gender-based colors
+      // Ajouter les cercles aux nœuds avec des couleurs basées sur le genre
       nodes.append("circle")
         .attr("r", 30)
-        .attr("fill", (d: any) => {
-          switch(d.gender) {
+        .attr("fill", (id: string) => {
+          const gender = membersById[id]?.gender;
+          switch(gender) {
             case 'M': return "#3b82f6"; // Bleu pour les hommes
             case 'F': return "#ec4899"; // Rose pour les femmes
             default: return "#1A1F2C";  // Couleur par défaut
@@ -133,48 +225,40 @@ const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [] }) => {
         })
         .attr("stroke", "#fff")
         .attr("stroke-width", 2);
-
-      // Add names to nodes
+      
+      // Ajouter les noms aux nœuds
       nodes.append("text")
         .attr("dy", 5)
         .attr("text-anchor", "middle")
         .attr("fill", "#fff")
-        .text((d: any) => d.name)
+        .text((id: string) => membersById[id]?.name || id)
         .attr("class", "font-medium text-sm");
 
-      // Update positions on each tick
-      simulation.on("tick", () => {
-        links
-          .attr("d", (d: any) => {
-            const sourceX = d.source.x;
-            const sourceY = d.source.y;
-            const targetX = d.target.x;
-            const targetY = d.target.y;
-            
-            return `M${sourceX},${sourceY}L${targetX},${targetY}`;
-          });
-
-        nodes
-          .attr("transform", (d: any) => `translate(${d.x},${d.y})`);
-      });
-
-      // Drag functions
-      function dragstarted(event: any, d: any) {
-        if (!event.active) simulation.alphaTarget(0.3).restart();
-        d.fx = d.x;
-        d.fy = d.y;
+      // Générer les liens entre parents et enfants
+      function generateLinks() {
+        const links: { source: string; target: string; }[] = [];
+        
+        members.forEach(member => {
+          if (member.parentId1 && member.parentId1 !== 'none' && membersById[member.parentId1]) {
+            links.push({ source: member.parentId1, target: member.id });
+          }
+          if (member.parentId2 && member.parentId2 !== 'none' && membersById[member.parentId2]) {
+            links.push({ source: member.parentId2, target: member.id });
+          }
+        });
+        
+        return links;
       }
 
-      function dragged(event: any, d: any) {
-        d.fx = event.x;
-        d.fy = event.y;
+      // Fonctions de glisser-déposer
+      function dragstarted(event: any) {
+        // Lorsque le glissement commence
       }
 
-      function dragended(event: any, d: any) {
-        if (!event.active) simulation.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
+      function dragended(event: any) {
+        // Lorsque le glissement se termine
       }
+
     } catch (error) {
       console.error("Erreur lors du rendu du graphique:", error);
       setError("Une erreur s'est produite lors de l'affichage du graphique");
