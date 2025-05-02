@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -17,7 +16,7 @@ import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, Dr
 const memberSchema = z.object({
   firstName: z.string().min(1, 'Le prénom est obligatoire'),
   lastName: z.string().min(1, 'Le nom est obligatoire'),
-  gender: z.enum(['M', 'F', 'O']).optional(),
+  gender: z.enum(['M', 'F']).optional(),
   birthDate: z.string().optional(),
   birthPlace: z.string().optional(),
   deathDate: z.string().optional(),
@@ -154,7 +153,6 @@ const EditMemberForm = ({ member, isOpen, onClose, onEdit }: EditMemberFormProps
                 <SelectContent>
                   <SelectItem value="M">Homme</SelectItem>
                   <SelectItem value="F">Femme</SelectItem>
-                  <SelectItem value="O">Autre</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

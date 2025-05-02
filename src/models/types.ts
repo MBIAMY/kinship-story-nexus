@@ -34,7 +34,7 @@ export type FamilyMemberData = {
   lastName: string;
   birthDate?: string;
   deathDate?: string;
-  gender?: 'M' | 'F' | 'O';
+  gender?: 'M' | 'F'; // Modifié ici: retiré 'O'
   birthPlace?: string;
   bio?: string;
   avatar?: string;
