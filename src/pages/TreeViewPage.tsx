@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -7,11 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FamilyMemberData, FamilyTreeData } from '@/models/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { GitGraph, User, UserPlus, Edit, Trash2 } from 'lucide-react';
+import { GitGraph, User, UserPlus, Edit, Trash2, X } from 'lucide-react';
 import TreePermissions from '@/components/permissions/TreePermissions';
 import AddMemberForm from '@/components/tree/AddMemberForm';
 import FamilyGraph from '@/components/FamilyGraph';
 import EditMemberForm from '@/components/tree/EditMemberForm';
+import MemberRelations from '@/components/tree/MemberRelations';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const TreeViewPage = () => {
@@ -28,6 +30,7 @@ const TreeViewPage = () => {
   const [selectedMember, setSelectedMember] = useState<FamilyMemberData | null>(null);
   const [showEditMember, setShowEditMember] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showRelations, setShowRelations] = useState(false);
   
   useEffect(() => {
     if (!isAuthenticated) {
@@ -73,6 +76,46 @@ const TreeViewPage = () => {
             birthDate: "1925-11-22",
             gender: "F",
             birthPlace: "Lyon",
+            parentId1: "member-1", // Marie est la fille de Jean
+            createdBy: "123",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: "member-3",
+            treeId: treeId,
+            firstName: "Pierre",
+            lastName: "Dupont",
+            birthDate: "1945-03-10",
+            gender: "M",
+            birthPlace: "Paris",
+            parentId1: "member-2", // Pierre est le fils de Marie
+            createdBy: "123",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: "member-4",
+            treeId: treeId,
+            firstName: "Sophie",
+            lastName: "Dupont",
+            birthDate: "1948-07-24",
+            gender: "F",
+            birthPlace: "Paris",
+            parentId1: "member-2", // Sophie est la fille de Marie (soeur de Pierre)
+            createdBy: "123",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: "member-5",
+            treeId: treeId,
+            firstName: "Luc",
+            lastName: "Dupont",
+            birthDate: "1970-12-05",
+            gender: "M",
+            birthPlace: "Marseille",
+            parentId1: "member-3", // Luc est le fils de Pierre
             createdBy: "123",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -114,6 +157,12 @@ const TreeViewPage = () => {
     toast.success(`${selectedMember.firstName} ${selectedMember.lastName} a été supprimé`);
     setShowDeleteDialog(false);
     setSelectedMember(null);
+    setShowRelations(false);
+  };
+  
+  const handleMemberSelection = (member: FamilyMemberData) => {
+    setSelectedMember(member);
+    setShowRelations(true);
   };
   
   if (isLoading) {
@@ -190,10 +239,35 @@ const TreeViewPage = () => {
               <TabsTrigger value="members">Membres ({members.length})</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="tree">
+            <TabsContent value="tree" className="relative">
               <Card className="p-6">
-                <FamilyGraph members={members} />
+                <FamilyGraph 
+                  members={members} 
+                  onSelectMember={handleMemberSelection} 
+                />
               </Card>
+              
+              {showRelations && selectedMember && (
+                <div className="mt-4 relative">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-xl font-semibold">
+                      Relations familiales
+                    </h2>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setShowRelations(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <MemberRelations 
+                    member={selectedMember} 
+                    allMembers={members} 
+                    onSelectMember={handleMemberSelection}
+                  />
+                </div>
+              )}
             </TabsContent>
             
             <TabsContent value="members">
@@ -228,7 +302,7 @@ const TreeViewPage = () => {
                             <th className="py-3 px-4 text-left">Genre</th>
                             <th className="py-3 px-4 text-left">Date de naissance</th>
                             <th className="py-3 px-4 text-left">Lieu de naissance</th>
-                            {canEdit && <th className="py-3 px-4 text-right">Actions</th>}
+                            <th className="py-3 px-4 text-center">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -249,32 +323,41 @@ const TreeViewPage = () => {
                               <td className="py-3 px-4">
                                 {member.birthPlace || '-'}
                               </td>
-                              {canEdit && (
-                                <td className="py-3 px-4 text-right">
-                                  <div className="flex justify-end gap-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedMember(member);
-                                        setShowEditMember(true);
-                                      }}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedMember(member);
-                                        setShowDeleteDialog(true);
-                                      }}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </td>
-                              )}
+                              <td className="py-3 px-4 text-center">
+                                <div className="flex justify-center gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleMemberSelection(member)}
+                                  >
+                                    <GitGraph className="h-4 w-4" />
+                                  </Button>
+                                  {canEdit && (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedMember(member);
+                                          setShowEditMember(true);
+                                        }}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedMember(member);
+                                          setShowDeleteDialog(true);
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -283,6 +366,30 @@ const TreeViewPage = () => {
                   )}
                 </CardContent>
               </Card>
+              
+              {showRelations && selectedMember && (
+                <div className="mt-4">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <CardTitle>Relations familiales</CardTitle>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setShowRelations(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <MemberRelations 
+                        member={selectedMember} 
+                        allMembers={members} 
+                        onSelectMember={handleMemberSelection}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
           

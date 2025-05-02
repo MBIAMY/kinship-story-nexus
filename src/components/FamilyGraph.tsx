@@ -1,13 +1,13 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { FamilyMemberData } from '@/models/types';
 
 interface FamilyGraphProps {
   members?: FamilyMemberData[];
+  onSelectMember?: (member: FamilyMemberData) => void;
 }
 
-const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [] }) => {
+const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [], onSelectMember }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -187,6 +187,15 @@ const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [] }) => {
         .append("g")
         .attr("class", "node")
         .attr("transform", (id) => `translate(${positions[id].x},${positions[id].y})`)
+        .style("cursor", "pointer")
+        .on("click", (event, id) => {
+          if (onSelectMember) {
+            const selectedMember = members.find(m => m.id === id);
+            if (selectedMember) {
+              onSelectMember(selectedMember);
+            }
+          }
+        })
         .call(d3.drag()
           .on("start", dragstarted)
           .on("drag", (event, id) => {
@@ -283,7 +292,7 @@ const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [] }) => {
       }
     }
 
-    // Handle window resize avec debounce pour éviter les problèmes de performance
+    // Handle window resize with debounce for performance
     let resizeTimer: number | null = null;
     const handleResize = () => {
       if (resizeTimer) {
@@ -292,10 +301,10 @@ const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [] }) => {
       
       resizeTimer = window.setTimeout(() => {
         if (svgRef.current && containerRef.current) {
-          // Plutôt que de recharger toute la page, déclenchons simplement un re-rendu
+          // Rather than reloading the page, trigger a re-render
           d3.select(svgRef.current).selectAll("*").remove();
           
-          // Forcer un re-rendu complet au lieu d'essayer de mettre à jour partiellement
+          // Force a full re-render instead of trying to partially update
           const newWidth = containerRef.current.clientWidth;
           d3.select(svgRef.current)
             .attr("width", newWidth);
@@ -306,13 +315,13 @@ const FamilyGraph: React.FC<FamilyGraphProps> = ({ members = [] }) => {
     window.addEventListener('resize', handleResize);
 
     return () => {
-      // Nettoyer les écouteurs d'événements pour éviter les fuites de mémoire
+      // Clean up event listeners to avoid memory leaks
       window.removeEventListener('resize', handleResize);
       if (resizeTimer) {
         window.clearTimeout(resizeTimer);
       }
     };
-  }, [members]);
+  }, [members, onSelectMember]);
 
   return (
     <div 
