@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -314,7 +313,6 @@ const TreeViewPage = () => {
                               <td className="py-3 px-4">
                                 {member.gender === 'M' && 'Homme'}
                                 {member.gender === 'F' && 'Femme'}
-                                {member.gender === 'O' && 'Autre'}
                                 {!member.gender && '-'}
                               </td>
                               <td className="py-3 px-4">

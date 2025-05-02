@@ -18,7 +18,7 @@ const Index = () => {
     lastName: member.name.split(' ')[1] || '',
     birthDate: member.dateOfBirth,
     deathDate: member.dateOfDeath,
-    gender: 'O', // Default gender
+    gender: 'M', // Changé de "O" à "M" pour correspondre au type
     birthPlace: '',
     bio: member.bio,
     avatar: member.imageUrl,
