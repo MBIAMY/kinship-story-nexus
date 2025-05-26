@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -98,42 +97,59 @@ const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }
     }
   }, [isOpen, form]);
 
+  // Calculer la génération de la personne en cours d'ajout
+  const getCurrentPersonGeneration = () => {
+    if (hasParents) {
+      // Si a des parents, la génération est celle du parent + 1
+      const parentId = watchParentId1 && watchParentId1 !== 'none' ? watchParentId1 : watchParentId2;
+      if (parentId && parentId !== 'none') {
+        const parentGen = calculateGeneration(parentId, existingMembers);
+        return parentGen + 1;
+      }
+    }
+    // Si pas de parents, génération 0 (racine)
+    return 0;
+  };
+
   // Calculer les membres disponibles pour conjoint (même génération)
   const getAvailableSpouses = () => {
-    if (hasParents) return existingMembers;
+    const currentGeneration = getCurrentPersonGeneration();
     
-    // Pour les membres sans parents, on peut les marier avec d'autres membres sans parents (génération 0)
     return existingMembers.filter(member => {
-      const generation = calculateGeneration(member.id, existingMembers);
-      return generation === 0;
+      const memberGeneration = calculateGeneration(member.id, existingMembers);
+      return memberGeneration === currentGeneration;
     });
   };
 
   // Calculer les membres disponibles pour cousin (même génération)
   const getAvailableCousins = () => {
-    if (hasParents) {
-      // Si a des parents, chercher les cousins dans la même génération
-      const parentId = watchParentId1 || watchParentId2;
-      if (parentId && parentId !== 'none') {
-        const parentGen = calculateGeneration(parentId, existingMembers);
-        const targetGen = parentGen + 1;
-        
-        return existingMembers.filter(member => {
-          const memberGen = calculateGeneration(member.id, existingMembers);
-          return memberGen === targetGen && 
-                 member.parentId1 !== parentId && 
-                 member.parentId2 !== parentId; // Pas frère/sœur
-        });
-      }
-    } else {
-      // Si pas de parents, chercher d'autres membres sans parents (génération 0)
-      return existingMembers.filter(member => {
-        const generation = calculateGeneration(member.id, existingMembers);
-        return generation === 0;
-      });
-    }
+    const currentGeneration = getCurrentPersonGeneration();
     
-    return existingMembers;
+    return existingMembers.filter(member => {
+      const memberGeneration = calculateGeneration(member.id, existingMembers);
+      
+      // Même génération
+      if (memberGeneration !== currentGeneration) {
+        return false;
+      }
+      
+      // Si la personne a des parents, éviter les frères et sœurs directs
+      if (hasParents) {
+        const parentId1 = watchParentId1 && watchParentId1 !== 'none' ? watchParentId1 : undefined;
+        const parentId2 = watchParentId2 && watchParentId2 !== 'none' ? watchParentId2 : undefined;
+        
+        // Exclure les membres qui ont les mêmes parents (frères/sœurs)
+        const memberParent1 = member.parentId1;
+        const memberParent2 = member.parentId2;
+        
+        const isSibling = (parentId1 && (memberParent1 === parentId1 || memberParent2 === parentId1)) ||
+                         (parentId2 && (memberParent1 === parentId2 || memberParent2 === parentId2));
+        
+        return !isSibling;
+      }
+      
+      return true;
+    });
   };
 
   // Gérer la fermeture du dialogue de manière sécurisée
@@ -380,7 +396,7 @@ const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }
                 name="spouseId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Conjoint (même génération)</FormLabel>
+                    <FormLabel>Conjoint (génération {getCurrentPersonGeneration()})</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
@@ -394,7 +410,7 @@ const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }
                         <SelectItem value="none">Aucun</SelectItem>
                         {getAvailableSpouses().map((member) => (
                           <SelectItem key={member.id} value={member.id}>
-                            {member.firstName} {member.lastName}
+                            {member.firstName} {member.lastName} (Gén. {calculateGeneration(member.id, existingMembers)})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -409,7 +425,7 @@ const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }
                 name="cousinId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cousin (même génération)</FormLabel>
+                    <FormLabel>Cousin (génération {getCurrentPersonGeneration()})</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
@@ -423,7 +439,75 @@ const AddMemberForm = ({ treeId, isOpen, onClose, onAddMember, existingMembers }
                         <SelectItem value="none">Aucun</SelectItem>
                         {getAvailableCousins().map((member) => (
                           <SelectItem key={member.id} value={member.id}>
-                            {member.firstName} {member.lastName}
+                            {member.firstName} {member.lastName} (Gén. {calculateGeneration(member.id, existingMembers)})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+        )}
+        
+        {hasParents && (
+          <div className="border-t pt-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Relations optionnelles (même génération {getCurrentPersonGeneration()}) :
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="spouseId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Conjoint (optionnel)</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un conjoint" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="max-h-[200px]">
+                        <SelectItem value="none">Aucun</SelectItem>
+                        {getAvailableSpouses().map((member) => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.firstName} {member.lastName} (Gén. {calculateGeneration(member.id, existingMembers)})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="cousinId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cousin (optionnel)</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un cousin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="max-h-[200px]">
+                        <SelectItem value="none">Aucun</SelectItem>
+                        {getAvailableCousins().map((member) => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.firstName} {member.lastName} (Gén. {calculateGeneration(member.id, existingMembers)})
                           </SelectItem>
                         ))}
                       </SelectContent>
